@@ -1,0 +1,4 @@
+librosa
+
+llvmlite>=0.41.0
+
