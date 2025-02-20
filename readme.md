@@ -4,6 +4,12 @@ uses librosa to extract features from audio files.
 
 the onset times are used to detect the major beats, its actually working pretty well and could be used to align music to lyrics/video or some other track etc
 
+## Visualization
+
+Here's a visualization of the audio features:
+
+![visualization](visualization.mp4)
+
 
 # Please support me!
 

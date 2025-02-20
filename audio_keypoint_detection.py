@@ -1,7 +1,10 @@
 import numpy as np  # type: ignore
 import librosa  # type: ignore
 from librosa import feature  # type: ignore
-
+import numpy as np
+import matplotlib.pyplot as plt
+import subprocess
+import os
 # Example 1: Using librosa features with reduced sensitivity
 
 def extract_features(y, sr):
@@ -61,3 +64,75 @@ if __name__ == "__main__":
     print("Spectral Centroid shape:", centroid.shape)
     print("Spectral Rolloff shape:", rolloff.shape)
     print("Zero Crossing Rate shape:", zero_cross.shape)
+
+    # Visualize features and waveform in video
+
+    
+    # Create visualization frames
+    n_frames = len(y)
+    frame_rate = 30
+    duration = len(y) / sr
+    n_viz_frames = int(duration * frame_rate)
+    
+    if not os.path.exists('frames'):
+        os.makedirs('frames')
+    
+    # Generate frames
+    for i in range(n_viz_frames):
+        time_point = i / frame_rate
+        sample_point = int(time_point * sr)
+        
+        plt.figure(figsize=(12, 8))
+        
+        # Plot waveform
+        plt.subplot(4, 1, 1)
+        window = 10000  # Show 10000 samples around current point
+        start = max(0, sample_point - window//2)
+        end = min(len(y), sample_point + window//2)
+        plt.plot(y[start:end])
+        plt.axvline(x=window//2, color='r')
+        plt.title('Waveform')
+        
+        # Plot onsets
+        plt.subplot(4, 1, 2)
+        plt.vlines(onsets * sr/1024, 0, 1, color='r', alpha=0.5)  # Convert seconds to frames
+        plt.axvline(x=sample_point/1024, color='b')  # Current position
+        plt.title('Onsets')
+        
+        # Plot tempogram
+        plt.subplot(4, 1, 3)
+        plt.imshow(tempogram, aspect='auto', origin='lower')
+        curr_frame = int(sample_point/1024)
+        plt.axvline(x=curr_frame, color='w')
+        plt.title('Tempogram')
+        
+        # Plot spectral features
+        plt.subplot(4, 1, 4)
+        plt.plot(centroid[0], label='Centroid')
+        plt.plot(rolloff[0], label='Rolloff')
+        plt.plot(zero_cross[0] * 1000, label='Zero Crossing Rate x1000')
+        plt.axvline(x=curr_frame, color='r')
+        plt.legend()
+        plt.title('Spectral Features')
+        
+        plt.tight_layout()
+        plt.savefig(f'frames/frame_{i:05d}.png')
+        plt.close()
+        
+    # Combine frames into video using ffmpeg
+    cmd = [
+        'ffmpeg', '-y',
+        '-framerate', str(frame_rate),
+        '-i', 'frames/frame_%05d.png',
+        '-i', filename,  # Add original audio
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        'visualization.mp4'
+    ]
+    subprocess.run(cmd)
+    
+    # Cleanup frames
+    for file in os.listdir('frames'):
+        os.remove(os.path.join('frames', file))
+    os.rmdir('frames')
